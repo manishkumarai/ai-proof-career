@@ -169,6 +169,11 @@ export default function App() {
                 )}
               </div>
             </div>
+            {error ? (
+              <div className="mt-5 rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                {error}
+              </div>
+            ) : null}
           </header>
 
           <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">

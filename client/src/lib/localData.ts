@@ -279,6 +279,10 @@ function makeUser(name: string, role: Role, topPerformer = false): User {
   };
 }
 
+function sameIdentity(user: Pick<User, "name" | "role">, candidate: Pick<User, "name" | "role">) {
+  return user.name === candidate.name && user.role === candidate.role;
+}
+
 function buildSeedDb(): LocalDb {
   const users = sampleUsers.map((item) => makeUser(item.name, item.role, item.topPerformer));
   const students = users.filter((user) => user.role === "student");
@@ -540,7 +544,37 @@ export const localApi = {
     });
   },
 
-  async resetDemoData(): Promise<void> {
-    writeDb(buildSeedDb());
+  async resetDemoData(currentUser?: Pick<User, "name" | "role"> | null): Promise<User | null> {
+    const db = buildSeedDb();
+    let preservedUser: User | null = null;
+
+    if (currentUser) {
+      const existing = db.users.find((entry) => sameIdentity(entry, currentUser));
+      preservedUser = existing ?? makeUser(currentUser.name, currentUser.role, false);
+      if (!existing) {
+        db.users.push(preservedUser);
+      }
+    }
+
+    writeDb(db);
+    return preservedUser;
+  },
+
+  async restoreUser(user: Pick<User, "id" | "name" | "role" | "topPerformer">): Promise<User> {
+    return withDb((db) => {
+      const existingById = db.users.find((entry) => entry.id === user.id);
+      if (existingById) {
+        return existingById;
+      }
+
+      const existingByIdentity = db.users.find((entry) => sameIdentity(entry, user));
+      if (existingByIdentity) {
+        return existingByIdentity;
+      }
+
+      const recreated = makeUser(user.name, user.role, user.topPerformer);
+      db.users.push(recreated);
+      return recreated;
+    });
   }
 };
