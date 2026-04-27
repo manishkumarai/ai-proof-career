@@ -11,7 +11,7 @@ Local cohort-learning prototype built from the curriculum in `/Users/mk/Download
 - Zustand
 - Recharts
 
-## What’s Included
+## What's Included
 
 - Role-based local login for `facilitator` and `student`
 - 8-week curriculum engine seeded from the source document
@@ -46,7 +46,7 @@ App URLs:
 ## Project Structure
 
 ```text
-ai-career1/
+ai-proof-career/
   client/      # React + Vite app for local and GitHub Pages hosting
   server/      # Original local Node prototype backend, not used by Pages
   shared/      # reserved for future shared contracts/assets
@@ -60,14 +60,24 @@ ai-career1/
 - Authentication is intentionally local and lightweight for prototype use.
 - GitHub Pages cannot host the Express backend, so facilitator/student syncing on Pages is per browser storage rather than truly shared across devices.
 
-## GitHub Pages
+## GitHub Pages Deployment
 
-Repository target: `ai-proof-career1`
+The app is automatically deployed to GitHub Pages whenever code is pushed to the `main` branch.
 
-1. Create a new GitHub repository named `ai-proof-career1`.
-2. Push this project so the app files live at the repository root.
-3. In GitHub, open `Settings -> Pages` and set `Source` to `GitHub Actions`.
-4. Push to `main`.
-5. The workflow in [.github/workflows/deploy-pages.yml](/Users/mk/Documents/Codex/ai-career1/.github/workflows/deploy-pages.yml) will publish the site.
+**Live site:** https://manishkumarai.github.io/ai-proof-career/
 
-The Vite base path is already configured for the GitHub Pages repo path `/ai-proof-career1/`.
+### How It Works
+
+1. GitHub Actions workflow triggers on push to `main` ([.github/workflows/deploy-pages.yml](.github/workflows/deploy-pages.yml))
+2. Workflow installs dependencies and builds the React app
+3. Build output is deployed to GitHub Pages
+4. Vite is configured with relative asset paths (`base: "./"`) for proper GitHub Pages hosting
+
+### Configuration Details
+
+- **Build output directory:** `client/dist/`
+- **Base path:** Relative paths using `./` (configured in `client/vite.config.ts`)
+- **Routing:** 404.html redirect enables SPA routing on GitHub Pages
+- **Storage:** Application state persists in browser `localStorage`
+
+The build artifacts are automatically generated on each deployment—they should not be committed to git.
