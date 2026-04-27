@@ -1,1 +1,5 @@
-export { localApi as api } from "./localData";
+import { localApi } from "./localData";
+import { hasSupabaseConfig } from "./supabase";
+import { supabaseApi } from "./supabaseData";
+
+export const api = hasSupabaseConfig ? supabaseApi : localApi;

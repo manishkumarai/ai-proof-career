@@ -2,7 +2,7 @@ import type { DashboardPayload, FacilitatorOverview, LiveSession, Role, Submissi
 
 const dbKey = "ai-proof-career1-db";
 
-const curriculumWeeks: Week[] = [
+export const curriculumWeeks: Week[] = [
   {
     id: 1,
     slug: "discover",
@@ -208,14 +208,14 @@ type LocalDb = {
   activeLiveSession: LiveSession | null;
 };
 
-const sampleUsers = [
+export const sampleUsers = [
   { name: "Aarav", role: "student" as const, topPerformer: true },
   { name: "Diya", role: "student" as const, topPerformer: false },
   { name: "Karthik", role: "student" as const, topPerformer: false },
   { name: "Facilitator Demo", role: "facilitator" as const, topPerformer: false }
 ];
 
-const sampleSubmissionTemplates = [
+export const sampleSubmissionTemplates = [
   {
     weekId: 1,
     type: "automation-risk-matrix",
