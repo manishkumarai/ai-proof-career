@@ -16,7 +16,6 @@ Local cohort-learning prototype built from the curriculum in `/Users/mk/Download
 - Role-based local login for `facilitator` and `student`
 - 8-week curriculum engine with structured weekly worksheets
 - Student dashboard with:
-<<<<<<< HEAD
   - Week navigation
   - Progress tracking (completion %)
   - Week-specific interactive worksheets and labs
@@ -42,15 +41,6 @@ Local cohort-learning prototype built from the curriculum in `/Users/mk/Download
 - For actual live teaching: use screen-sharing via Zoom, Teams, or Meet
 - All facilitator features are demo/practice only
 - Cannot broadcast to students without backend
-=======
-  - week navigation
-  - progress tracking
-  - week-specific interactive worksheets and labs
-  - submission history
-- Polling-based real-time simulation every 5 seconds
-- Week 8 PDF export
-- Shared facilitator/student state across browsers through Supabase
->>>>>>> b47ffcd4 (build old)
 
 ## Setup
 
@@ -68,23 +58,14 @@ App URLs:
 ## Project Structure
 
 ```text
-<<<<<<< HEAD
 ai-proof-career/
   client/      # React + Vite app for GitHub Pages hosting
   server/      # Local Node prototype (not deployed to Pages)
   shared/      # Reserved for future shared contracts/assets
-=======
-ai-career1/
-  client/      # React + Vite app for local and Vercel hosting
-  server/      # original local Node prototype backend
-  shared/      # reserved for future shared contracts/assets
-  supabase/    # schema and setup SQL for hosted data
->>>>>>> b47ffcd4 (build old)
 ```
 
 ## Notes
 
-<<<<<<< HEAD
 - The curriculum content is structured from the attached DOCX and built into the app
 - For GitHub Pages, the app runs fully statically with no backend
 - All student and facilitator data is stored in browser `localStorage`
@@ -143,48 +124,3 @@ To work on the student curriculum:
 ## Contact
 
 Built for the AI-Proof Career OS cohort learning model.
-=======
-- The curriculum content is structured from the attached DOCX and remains embedded in the client app.
-- Shared cohort data now comes from Supabase when environment variables are configured.
-- If Supabase env vars are missing, the app falls back to the local browser demo store.
-- The Colab experience is embedded as an external launcher link, with no backend code execution.
-- Authentication is intentionally local and lightweight for prototype use.
-
-## Supabase Setup
-
-1. Create a new Supabase project.
-2. In the Supabase SQL Editor, run [schema.sql](/Users/mk/Documents/Codex/ai-career1/supabase/schema.sql).
-3. Copy the project URL and anon public key.
-4. Add them to [client/.env.example](/Users/mk/Documents/Codex/ai-career1/client/.env.example) values locally as:
-
-```bash
-VITE_SUPABASE_URL=...
-VITE_SUPABASE_ANON_KEY=...
-```
-
-5. Start the app locally:
-
-```bash
-npm install
-npm run dev --workspace client
-```
-
-On first login, the app will seed the demo cohort into Supabase automatically.
-
-## Vercel Deployment
-
-1. Import the repository into Vercel.
-2. Keep the project root at the repository root so [vercel.json](/Users/mk/Documents/Codex/ai-career1/vercel.json) is used.
-3. In Vercel Project Settings -> Environment Variables, add:
-   - `VITE_SUPABASE_URL`
-   - `VITE_SUPABASE_ANON_KEY`
-4. Redeploy.
-
-Vercel will use:
-- `buildCommand`: `npm run build --workspace client`
-- `outputDirectory`: `client/dist`
-
-## Security Note
-
-This prototype intentionally keeps the original “simple local role selection” model and uses public Supabase access policies so facilitator/student collaboration works without auth. For a production-ready cohort platform, we should add real Supabase Auth and tighten row-level policies.
->>>>>>> b47ffcd4 (build old)
