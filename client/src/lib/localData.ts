@@ -326,15 +326,20 @@ function buildSeedDb(): LocalDb {
 }
 
 function readDb(): LocalDb {
-  const raw = localStorage.getItem(dbKey);
-  if (!raw) {
+  try {
+    const raw = localStorage.getItem(dbKey);
+    if (!raw) {
+      const seeded = buildSeedDb();
+      writeDb(seeded);
+      return seeded;
+    }
+    return JSON.parse(raw) as LocalDb;
+  } catch (error) {
+    console.error("Failed to read local DB, resetting to defaults", error);
     const seeded = buildSeedDb();
     writeDb(seeded);
     return seeded;
   }
-
-  const parsed = JSON.parse(raw) as LocalDb;
-  return parsed;
 }
 
 function writeDb(db: LocalDb) {
@@ -375,17 +380,26 @@ function computeDashboard(user: User, db: LocalDb): DashboardPayload {
 }
 
 function refreshSubmissionRelations(db: LocalDb) {
-  db.submissions = db.submissions.map((submission) => ({
-    ...submission,
-    user: db.users.find((user) => user.id === submission.userId)!,
-    week: db.weeks.find((week) => week.id === submission.weekId)!
-  }));
+  db.submissions = db.submissions
+    .map((submission) => {
+      const user = db.users.find((u) => u.id === submission.userId);
+      const week = db.weeks.find((w) => w.id === submission.weekId);
+      
+      if (!user || !week) return null;
+
+      return {
+        ...submission,
+        user,
+        week
+      };
+    })
+    .filter((s): s is Submission => s !== null);
 
   if (db.activeLiveSession) {
-    db.activeLiveSession = {
-      ...db.activeLiveSession,
-      week: db.weeks.find((week) => week.id === db.activeLiveSession?.weekId)!
-    };
+    const week = db.weeks.find((w) => w.id === db.activeLiveSession?.weekId);
+    if (week) {
+      db.activeLiveSession.week = week;
+    }
   }
 }
 
