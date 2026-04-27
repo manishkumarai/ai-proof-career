@@ -14,21 +14,33 @@ Local cohort-learning prototype built from the curriculum in `/Users/mk/Download
 ## What's Included
 
 - Role-based local login for `facilitator` and `student`
-- 8-week curriculum engine seeded from the source document
-- Facilitator dashboard with:
-  - week controls
-  - live teaching mode
-  - start Session A / B
-  - trigger cohort activity
-  - recent submissions feed
-  - top performer flag
+- 8-week curriculum engine with structured weekly worksheets
 - Student dashboard with:
-  - week navigation
-  - progress tracking
-  - week-specific interactive worksheets and labs
-  - submission history
-- Polling-based real-time simulation every 5 seconds
-- Week 8 PDF export
+  - Week navigation
+  - Progress tracking (completion %)
+  - Week-specific interactive worksheets and labs
+  - Submission history
+  - PDF export (Week 8)
+- Facilitator demo mode with:
+  - Practice presentation mode on YOUR device
+  - Demo session starting (local to device only)
+  - Local activity triggering (not broadcast to students)
+  - Demo data reset
+
+## How It Works
+
+**Student Experience (All Devices):**
+- Each student works independently through 8 weeks
+- All progress saved locally in browser storage
+- Works completely offline
+- No server required
+
+**Facilitator Experience (Demo Mode):**
+- Practice presenting with curriculum content
+- Try presentation mode on your local device
+- For actual live teaching: use screen-sharing via Zoom, Teams, or Meet
+- All facilitator features are demo/practice only
+- Cannot broadcast to students without backend
 
 ## Setup
 
@@ -47,18 +59,19 @@ App URLs:
 
 ```text
 ai-proof-career/
-  client/      # React + Vite app for local and GitHub Pages hosting
-  server/      # Original local Node prototype backend, not used by Pages
-  shared/      # reserved for future shared contracts/assets
+  client/      # React + Vite app for GitHub Pages hosting
+  server/      # Local Node prototype (not deployed to Pages)
+  shared/      # Reserved for future shared contracts/assets
 ```
 
 ## Notes
 
-- The curriculum content is structured from the attached DOCX and seeded into the app's browser-side demo store.
-- For GitHub Pages, the app now runs fully statically and stores demo data in browser `localStorage`.
-- The Colab experience is embedded as an external launcher link, with no backend code execution.
-- Authentication is intentionally local and lightweight for prototype use.
-- GitHub Pages cannot host the Express backend, so facilitator/student syncing on Pages is per browser storage rather than truly shared across devices.
+- The curriculum content is structured from the attached DOCX and built into the app
+- For GitHub Pages, the app runs fully statically with no backend
+- All student and facilitator data is stored in browser `localStorage`
+- Facilitator "demo mode" features are practice-only—for live cohort experiences, use screen-sharing
+- Authentication is intentionally local and lightweight for prototype use
+- Each device maintains its own independent data (no cross-device sync)
 
 ## GitHub Pages Deployment
 
@@ -81,3 +94,33 @@ The app is automatically deployed to GitHub Pages whenever code is pushed to the
 - **Storage:** Application state persists in browser `localStorage`
 
 The build artifacts are automatically generated on each deployment—they should not be committed to git.
+
+## Limitations
+
+**Single-Device Operation:**
+- This is a **static web app** with no backend
+- Student data is private to each device
+- Facilitator features are demo/practice only
+- Live cohort sync requires screen-sharing (Zoom, Teams, Meet)
+
+**Not Available on GitHub Pages:**
+- Multi-device facilitator dashboards
+- Real-time student rankings
+- Cohort-wide submission aggregation
+- Live activity broadcasting to students
+
+**For true cohort collaboration:**
+- Deploy a Node.js backend
+- Use WebSocket for real-time sync
+- Run a database for cross-device state
+
+## Development
+
+To work on the student curriculum:
+- Edit worksheet content in `/client/src/components/StudentWeekWorkspace.tsx`
+- Modify week definitions in `/client/src/lib/localData.ts`
+- All changes auto-deploy to GitHub Pages on push to main
+
+## Contact
+
+Built for the AI-Proof Career OS cohort learning model.

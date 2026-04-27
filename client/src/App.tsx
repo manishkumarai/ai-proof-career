@@ -14,19 +14,15 @@ export default function App() {
   const {
     user,
     dashboard,
-    facilitatorOverview,
     activeLiveSession,
     loading,
     error,
     login,
     refreshDashboard,
-    refreshFacilitatorOverview,
-    refreshLiveSession,
     submitWork,
     startLiveSession,
     updateSlide,
     triggerActivity,
-    toggleTopPerformer,
     resetDemoData,
     loadStoredSession,
     logout
@@ -38,19 +34,6 @@ export default function App() {
   useEffect(() => {
     void loadStoredSession();
   }, [loadStoredSession]);
-
-  useEffect(() => {
-    if (!user) return;
-    const interval = window.setInterval(() => {
-      void refreshDashboard();
-      void refreshLiveSession();
-      if (user.role === "facilitator") {
-        void refreshFacilitatorOverview();
-      }
-    }, 5000);
-
-    return () => window.clearInterval(interval);
-  }, [refreshDashboard, refreshFacilitatorOverview, refreshLiveSession, user]);
 
   useEffect(() => {
     if (dashboard?.weeks?.length) {
@@ -72,168 +55,141 @@ export default function App() {
   }
 
   if (!dashboard || !selectedWeek) {
-    return <div className="flex min-h-screen items-center justify-center text-lg">Loading cohort workspace...</div>;
+    return <div className="flex min-h-screen items-center justify-center text-lg">Loading workspace...</div>;
   }
 
   const pollChartData =
-    facilitatorOverview?.pollAggregation.map((entry) => ({
-      name: `W${entry.weekId}`,
-      submissions: entry._count._all
-    })) ?? [];
+    dashboard?.submissions
+      ?.reduce(
+        (acc, submission) => {
+          const entry = acc.find((e) => e.weekId === submission.weekId);
+          if (entry) {
+            entry.count++;
+          } else {
+            acc.push({ weekId: submission.weekId, count: 1 });
+          }
+          return acc;
+        },
+        [] as { weekId: number; count: number }[]
+      )
+      ?.map((entry) => ({
+        name: `W${entry.weekId}`,
+        submissions: entry.count
+      })) ?? [];
 
-  const completed = dashboard.progress.byWeek.find((entry) => entry.weekId === selectedWeek.id)?.completed ?? false;
-  const facilitatorActions: Array<{
-    title: string;
-    description: string;
-    handler: () => Promise<void>;
-  }> = [
-    {
-      title: "Trigger current activity",
-      description: "Push the activity prompt to all students",
-      handler: () =>
-        triggerActivity(`Week ${selectedWeek.id} activity`, {
-          prompt: selectedWeek.sessionBBody,
-          deliverable: selectedWeek.deliverable
-        })
-    },
-    {
-      title: "Refresh live submissions",
-      description: "Manually pull the latest cohort work",
-      handler: refreshFacilitatorOverview
-    },
-    {
-      title: "Open presentation",
-      description: "Fullscreen session flow for teaching",
-      handler: async () => setPresentationOpen(true)
+  const completedWeeks = useMemo(() => {
+    const completed = new Set<number>();
+    dashboard?.weeks.forEach((week) => {
+      const hasSubmission = dashboard.submissions.some(
+        (s) => s.userId === user.id && s.weekId === week.id && s.type === "primary"
+      );
+      if (hasSubmission) completed.add(week.id);
+    });
+    return completed;
+  }, [dashboard, user.id]);
+
+  const renderTabContent = () => {
+    if (selectedWeek.id === 8 && user.role === "student") {
+      return (
+        <StudentWeekWorkspace
+          userId={user.id}
+          week={selectedWeek}
+          
+          onSubmit={async (payload) => void submitWork(payload)}
+        />
+      );
     }
-  ];
+
+    return (
+      <div className="space-y-5">
+        <StudentWeekWorkspace
+          userId={user.id}
+          week={selectedWeek}
+          
+          onSubmit={async (payload) => void submitWork(payload)}
+        />
+      </div>
+    );
+  };
 
   return (
-    <>
-      <div className="grid min-h-screen gap-5 p-4 lg:grid-cols-[290px_minmax(0,1fr)] lg:p-5">
-        <Sidebar
-          user={user}
-          weeks={dashboard.weeks}
-          selectedWeekId={selectedWeekId}
-          onSelectWeek={setSelectedWeekId}
-          onLogout={logout}
-        />
+    <div className="min-h-screen bg-[linear-gradient(135deg,#E8F4F0,#E8F4F0)] text-[var(--ink)] transition-colors">
+      <Sidebar user={user} weeks={dashboard?.weeks ?? []} selectedWeekId={selectedWeekId} onSelectWeek={setSelectedWeekId} onLogout={logout} />
 
-        <main className="space-y-5">
-          <header className="glass card-shadow rounded-[2rem] p-6 lg:p-8">
-            <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
-              <div>
-                <p className="text-sm uppercase tracking-[0.35em] text-[var(--accent)]">Cohort Dashboard</p>
-                <h1 className="mt-3 text-3xl font-semibold lg:text-5xl">
-                  {user.role === "facilitator" ? "Facilitator control room" : "Student learning workspace"}
-                </h1>
-                <p className="mt-4 max-w-3xl text-base leading-7 text-[var(--muted)]">
-                  {user.role === "facilitator"
-                    ? "Start sessions, drive the presentation flow, trigger cohort activities, and watch submissions update every 5 seconds."
-                    : "Move through the active week, complete the structured work, submit outputs, and keep your cohort progress visible."}
+      <main className="pl-0 sm:pl-80">
+        <div className="mx-auto max-w-5xl space-y-8 px-4 py-8 sm:px-8">
+          {/* Header */}
+          <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
+            <div>
+              <p className="text-sm uppercase tracking-[0.35em] text-[var(--accent)]">AI-Proof Career OS</p>
+              <h1 className="mt-3 text-3xl font-semibold lg:text-5xl">
+                {user.role === "facilitator" ? "Facilitator Demo Mode (Local Only)" : "Student Learning Workspace"}
+              </h1>
+              <p className="mt-4 max-w-3xl text-base leading-7 text-[var(--muted)]">
+                {user.role === "facilitator"
+                  ? "Practice presenting with demo data on YOUR device. Use screen-sharing with students for live teaching."
+                  : "Move through the active week, complete the structured work, submit outputs, and track your progress."}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              {user.role === "facilitator" ? (
+                <>
+                  <button
+                    onClick={() => void startLiveSession(selectedWeek.id, "A")}
+                    className="rounded-full bg-[var(--ink)] px-5 py-3 text-sm font-semibold text-white"
+                  >
+                    Start Session A
+                  </button>
+                  <button
+                    onClick={() => void startLiveSession(selectedWeek.id, "B")}
+                    className="rounded-full border border-[var(--line)] bg-white px-5 py-3 text-sm font-semibold"
+                  >
+                    Start Session B
+                  </button>
+                  <button
+                    onClick={() => void resetDemoData()}
+                    className="rounded-full border border-[var(--line)] bg-white px-5 py-3 text-sm font-semibold"
+                  >
+                    Reset Demo Data
+                  </button>
+                  <button
+                    onClick={() => setPresentationOpen(true)}
+                    className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-white px-5 py-3 text-sm font-semibold"
+                  >
+                    <MonitorPlay size={16} />
+                    Live Teaching Mode
+                  </button>
+                </>
+              ) : (
+                <div className="rounded-full bg-[var(--accent-soft)] px-5 py-3 text-sm font-semibold text-[var(--accent)]">
+                  Current week: Week {selectedWeek.id}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {error ? (
+            <div className="mt-5 rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              {error}
+            </div>
+          ) : null}
+
+          {/* Week Card */}
+          <WeekCard week={selectedWeek} completed={completedWeeks.has(selectedWeek.id)} />
+
+          {/* Main Content */}
+          <div className="grid gap-8 lg:grid-cols-3">
+            {/* Submissions */}
+            {user.role === "facilitator" ? (
+              <div className="space-y-4 rounded-2xl bg-white/40 p-6 backdrop-blur lg:col-span-2">
+                <p className="text-sm font-semibold text-[var(--muted)]">Submissions Feed</p>
+                <p className="text-sm leading-6 text-[var(--muted)]">
+                  Live submissions feed requires backend access. On GitHub Pages, this demo tracks only sessions started on YOUR device. Use screen-sharing to view student work during the cohort.
                 </p>
               </div>
-              <div className="flex flex-wrap gap-3">
-                {user.role === "facilitator" ? (
-                  <>
-                    <button
-                      onClick={() => void startLiveSession(selectedWeek.id, "A")}
-                      className="rounded-full bg-[var(--ink)] px-5 py-3 text-sm font-semibold text-white"
-                    >
-                      Start Session A
-                    </button>
-                    <button
-                      onClick={() => void startLiveSession(selectedWeek.id, "B")}
-                      className="rounded-full border border-[var(--line)] bg-white px-5 py-3 text-sm font-semibold"
-                    >
-                      Start Session B
-                    </button>
-                    <button
-                      onClick={() => void resetDemoData()}
-                      className="rounded-full border border-[var(--line)] bg-white px-5 py-3 text-sm font-semibold"
-                    >
-                      Reset Demo Data
-                    </button>
-                    <button
-                      onClick={() => setPresentationOpen(true)}
-                      className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-white px-5 py-3 text-sm font-semibold"
-                    >
-                      <MonitorPlay size={16} />
-                      Live Teaching Mode
-                    </button>
-                  </>
-                ) : (
-                  <div className="rounded-full bg-[var(--accent-soft)] px-5 py-3 text-sm font-semibold text-[var(--accent)]">
-                    Current week: Week {selectedWeek.id}
-                  </div>
-                )}
-              </div>
-            </div>
-            {error ? (
-              <div className="mt-5 rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                {error}
-              </div>
-            ) : null}
-          </header>
-
-          <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
-            <div className="space-y-5">
-              <WeekCard week={selectedWeek} completed={completed} />
-
-              {user.role === "student" ? (
-                <StudentWeekWorkspace
-                  week={selectedWeek}
-                  userId={user.id}
-                  onSubmit={async (payload) => {
-                    await submitWork(payload);
-                  }}
-                />
-              ) : (
-                <section className="glass card-shadow rounded-[2rem] p-6">
-                  <div className="flex flex-wrap items-center justify-between gap-4">
-                    <div>
-                      <h3 className="text-xl font-semibold">Facilitator live overview</h3>
-                      <p className="mt-1 text-sm text-[var(--muted)]">
-                        Present the week, trigger the activity prompt, and keep top responses visible to the cohort.
-                      </p>
-                    </div>
-                    {activeLiveSession ? (
-                      <div className="rounded-full bg-emerald-100 px-4 py-2 text-sm font-semibold text-emerald-700">
-                        Live now: Week {activeLiveSession.weekId} Session {activeLiveSession.sessionType}
-                      </div>
-                    ) : (
-                      <div className="rounded-full bg-stone-100 px-4 py-2 text-sm font-semibold text-stone-700">
-                        No active live session
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="mt-6 grid gap-4 md:grid-cols-3">
-                    {facilitatorActions.map(({ title, description, handler }) => (
-                      <button
-                        key={title}
-                        onClick={() => void handler()}
-                        className="rounded-[1.5rem] border border-[var(--line)] bg-white/80 p-5 text-left transition hover:bg-white"
-                      >
-                        <p className="text-sm font-semibold">{title}</p>
-                        <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{description}</p>
-                      </button>
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              {user.role === "facilitator" ? (
-                <SubmissionFeed
-                  submissions={(facilitatorOverview?.recentSubmissions ?? []).filter((submission) => submission.weekId === selectedWeek.id).slice(0, 10)}
-                  title="Live student responses"
-                  refreshLabel="Manual refresh"
-                  onRefresh={refreshFacilitatorOverview}
-                />
-              ) : (
-                <SubmissionFeed submissions={currentWeekSubmissions} title="Your submissions" onRefresh={refreshDashboard} />
-              )}
-            </div>
+            ) : (
+              <SubmissionFeed submissions={currentWeekSubmissions} title="Your submissions" onRefresh={refreshDashboard} />
+            )}
 
             <div className="space-y-5">
               {user.role === "student" ? (
@@ -246,11 +202,14 @@ export default function App() {
                 <section className="glass card-shadow rounded-[2rem] p-6">
                   <div className="flex items-center gap-2 text-sm font-semibold text-[var(--muted)]">
                     <BarChart3 size={16} />
-                    Submission Volume
+                    Local Session Data
                   </div>
-                  <div className="mt-5 h-64">
+                  <p className="mt-4 text-xs leading-6 text-[var(--muted)]">
+                    Cohort analytics not available. This demo tracks only sessions on YOUR device. For organization-wide insights, deploy a backend.
+                  </p>
+                  <div className="mt-4 h-40">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={pollChartData}>
+                      <BarChart data={pollChartData.length > 0 ? pollChartData : [{ name: "W1", submissions: 0 }]}>
                         <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="rgba(17,34,29,0.08)" />
                         <XAxis dataKey="name" tickLine={false} axisLine={false} />
                         <YAxis tickLine={false} axisLine={false} />
@@ -265,63 +224,37 @@ export default function App() {
               <section className="glass card-shadow rounded-[2rem] p-6">
                 <div className="flex items-center gap-2 text-sm font-semibold text-[var(--muted)]">
                   <RadioTower size={16} />
-                  Active Classroom Signal
+                  {user.role === "facilitator" ? "Local Session Signal" : "Active Classroom Signal"}
                 </div>
                 <div className="mt-4 rounded-[1.5rem] bg-white/80 p-5">
-                  {activeLiveSession ? (
+                  {activeLiveSession && activeLiveSession.isActive ? (
                     <>
                       <p className="text-sm font-semibold">
                         Week {activeLiveSession.weekId} • Session {activeLiveSession.sessionType}
                       </p>
                       <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{activeLiveSession.week.title}</p>
+                      {user.role === "facilitator" && (
+                        <p className="mt-2 text-xs text-[var(--accent)]">Session active only on this device</p>
+                      )}
                       <p className="mt-3 rounded-2xl bg-[var(--accent-soft)] p-3 text-sm text-[var(--ink)]">
                         {activeLiveSession.activityTitle
                           ? `${activeLiveSession.activityTitle}: ${String(activeLiveSession.activityBody?.prompt ?? "")}`
-                          : "No triggered activity yet. Students will see session status update when the facilitator pushes one."}
+                          : user.role === "facilitator"
+                            ? "No triggered activity yet. Demo mode only—use screen-sharing to share with students."
+                            : "No triggered activity yet. Students will see session status update when the facilitator pushes one."}
                       </p>
                     </>
                   ) : (
                     <p className="text-sm leading-6 text-[var(--muted)]">
-                      No live session is active yet. Start one from the facilitator dashboard to sync the cohort.
+                      {user.role === "facilitator"
+                        ? "No session active. Start one from above to practice presenting."
+                        : "No live session is active yet."}
                     </p>
                   )}
                 </div>
               </section>
 
-              {user.role === "facilitator" ? (
-                <section className="glass card-shadow rounded-[2rem] p-6">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-[var(--muted)]">
-                    <Crown size={16} />
-                    Top performers
-                  </div>
-                  <div className="mt-4 space-y-3">
-                    {facilitatorOverview?.topPerformers.map((student, index) => (
-                      <article key={student.id} className="rounded-[1.5rem] border border-[var(--line)] bg-white/80 p-4">
-                        <div className="flex items-center justify-between gap-3">
-                          <div>
-                            <p className="text-sm font-semibold">
-                              #{index + 1} {student.name}
-                            </p>
-                            <p className="mt-1 text-xs text-[var(--muted)]">
-                              Avg score {student.avgScore} • {student.submissions} submissions
-                            </p>
-                          </div>
-                          <button
-                            onClick={() => void toggleTopPerformer(student.id, !student.topPerformer)}
-                            className={`rounded-full px-3 py-2 text-xs font-semibold ${
-                              student.topPerformer
-                                ? "bg-amber-100 text-amber-700"
-                                : "bg-stone-100 text-stone-700"
-                            }`}
-                          >
-                            {student.topPerformer ? "Flagged" : "Mark top performer"}
-                          </button>
-                        </div>
-                      </article>
-                    ))}
-                  </div>
-                </section>
-              ) : (
+              {user.role === "student" ? (
                 <section className="glass card-shadow rounded-[2rem] p-6">
                   <div className="flex items-center gap-2 text-sm font-semibold text-[var(--muted)]">
                     <Sparkles size={16} />
@@ -329,30 +262,26 @@ export default function App() {
                   </div>
                   <p className="mt-4 text-sm leading-7 text-[var(--muted)]">
                     Session A: {selectedWeek.sessionATheme}. Session B: {selectedWeek.sessionBTheme}. Use the workspace
-                    below the week card to complete the required deliverable and keep your cohort progress moving.
+                    below the week card to complete the required deliverable and track your progress.
                   </p>
                 </section>
-              )}
+              ) : null}
             </div>
           </div>
-        </main>
-      </div>
 
-      {presentationOpen && activeLiveSession && selectedWeek.id === activeLiveSession.weekId ? (
+          {/* Workspace */}
+          {renderTabContent()}
+        </div>
+      </main>
+
+      {presentationOpen && activeLiveSession && activeLiveSession.isActive && selectedWeek.id === activeLiveSession.weekId ? (
         <PresentationMode
-          liveSession={activeLiveSession}
-          week={selectedWeek}
+          session={activeLiveSession}
           onClose={() => setPresentationOpen(false)}
-          onNext={() => updateSlide(activeLiveSession.presentationIdx + 1)}
-          onPrevious={() => updateSlide(Math.max(activeLiveSession.presentationIdx - 1, 0))}
-          onTrigger={() =>
-            triggerActivity(`Week ${selectedWeek.id} activity`, {
-              prompt: selectedWeek.sessionBBody,
-              deliverable: selectedWeek.deliverable
-            })
-          }
+          onUpdateSlide={updateSlide}
+          onTriggerActivity={triggerActivity}
         />
       ) : null}
-    </>
+    </div>
   );
 }

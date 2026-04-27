@@ -1,18 +1,15 @@
 import { create } from "zustand";
 import { api } from "../lib/api";
-import type { DashboardPayload, FacilitatorOverview, LiveSession, Role, Submission, User } from "../lib/types";
+import type { DashboardPayload, LiveSession, Role, Submission, User } from "../lib/types";
 
 type AppState = {
   user: User | null;
   dashboard: DashboardPayload | null;
-  facilitatorOverview: FacilitatorOverview | null;
   activeLiveSession: LiveSession | null;
   loading: boolean;
   error: string | null;
   login: (name: string, role: Role) => Promise<void>;
   refreshDashboard: () => Promise<void>;
-  refreshFacilitatorOverview: () => Promise<void>;
-  refreshLiveSession: () => Promise<void>;
   submitWork: (payload: {
     userId: string;
     weekId: number;
@@ -23,7 +20,6 @@ type AppState = {
   startLiveSession: (weekId: number, sessionType: "A" | "B") => Promise<void>;
   updateSlide: (presentationIdx: number) => Promise<void>;
   triggerActivity: (activityTitle: string, activityBody: Record<string, unknown>) => Promise<void>;
-  toggleTopPerformer: (id: string, topPerformer: boolean) => Promise<void>;
   resetDemoData: () => Promise<void>;
   setError: (message: string | null) => void;
   loadStoredSession: () => Promise<void>;
@@ -41,7 +37,6 @@ async function ensureFreshUser(user: User): Promise<User> {
 export const useAppStore = create<AppState>((set, get) => ({
   user: null,
   dashboard: null,
-  facilitatorOverview: null,
   activeLiveSession: null,
   loading: false,
   error: null,
@@ -53,10 +48,6 @@ export const useAppStore = create<AppState>((set, get) => ({
       sessionStorage.setItem(storageKey, JSON.stringify(user));
       set({ user });
       await get().refreshDashboard();
-      if (role === "facilitator") {
-        await get().refreshFacilitatorOverview();
-      }
-      await get().refreshLiveSession();
     } catch (error) {
       set({ error: error instanceof Error ? error.message : "Login failed" });
     } finally {
@@ -81,32 +72,10 @@ export const useAppStore = create<AppState>((set, get) => ({
       throw error;
     }
   },
-  refreshFacilitatorOverview: async () => {
-    if (get().user?.role !== "facilitator") return;
-    try {
-      const facilitatorOverview = await api.facilitatorOverview();
-      set({ facilitatorOverview, error: null });
-    } catch (error) {
-      set({ error: error instanceof Error ? error.message : "Unable to refresh facilitator overview" });
-      throw error;
-    }
-  },
-  refreshLiveSession: async () => {
-    try {
-      const activeLiveSession = await api.currentLiveSession();
-      set({ activeLiveSession, error: null });
-    } catch (error) {
-      set({ error: error instanceof Error ? error.message : "Unable to refresh live session" });
-      throw error;
-    }
-  },
   submitWork: async (payload) => {
     try {
       const submission = await api.createSubmission(payload);
       await get().refreshDashboard();
-      if (get().user?.role === "facilitator") {
-        await get().refreshFacilitatorOverview();
-      }
       set({ error: null });
       return submission;
     } catch (error) {
@@ -116,10 +85,25 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   startLiveSession: async (weekId, sessionType) => {
     try {
-      const activeLiveSession = await api.startLiveSession(weekId, sessionType);
+      // Local-only: Create session in state without API call
+      const dashboard = get().dashboard;
+      if (!dashboard) return;
+      
+      const week = dashboard.weeks.find((w) => w.id === weekId);
+      if (!week) return;
+      
+      const activeLiveSession: LiveSession = {
+        id: `demo-${Date.now()}`,
+        weekId,
+        sessionType,
+        week,
+        isActive: true,
+        presentationIdx: 0,
+        activityTitle: null,
+        activityBody: null
+      };
+      
       set({ activeLiveSession, error: null });
-      await get().refreshDashboard();
-      await get().refreshFacilitatorOverview();
     } catch (error) {
       set({ error: error instanceof Error ? error.message : "Unable to start live session" });
       throw error;
@@ -129,8 +113,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     const liveSession = get().activeLiveSession;
     if (!liveSession) return;
     try {
-      const activeLiveSession = await api.updateSlide(liveSession.id, presentationIdx);
-      set({ activeLiveSession, error: null });
+      // Local-only: Update in-memory session state
+      const updated: LiveSession = {
+        ...liveSession,
+        presentationIdx
+      };
+      set({ activeLiveSession: updated, error: null });
     } catch (error) {
       set({ error: error instanceof Error ? error.message : "Unable to update slide" });
       throw error;
@@ -140,21 +128,15 @@ export const useAppStore = create<AppState>((set, get) => ({
     const liveSession = get().activeLiveSession;
     if (!liveSession) return;
     try {
-      const activeLiveSession = await api.triggerActivity(liveSession.id, activityTitle, activityBody);
-      set({ activeLiveSession, error: null });
+      // Local-only: Update in-memory session state
+      const updated: LiveSession = {
+        ...liveSession,
+        activityTitle,
+        activityBody
+      };
+      set({ activeLiveSession: updated, error: null });
     } catch (error) {
       set({ error: error instanceof Error ? error.message : "Unable to trigger activity" });
-      throw error;
-    }
-  },
-  toggleTopPerformer: async (id, topPerformer) => {
-    try {
-      await api.setTopPerformer(id, topPerformer);
-      await get().refreshFacilitatorOverview();
-      await get().refreshDashboard();
-      set({ error: null });
-    } catch (error) {
-      set({ error: error instanceof Error ? error.message : "Unable to update top performer" });
       throw error;
     }
   },
@@ -167,11 +149,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         set({ user: preservedUser });
       }
       await get().refreshDashboard();
-      if (get().user?.role === "facilitator") {
-        await get().refreshFacilitatorOverview();
-      }
-      await get().refreshLiveSession();
-      set({ error: null });
+      set({ activeLiveSession: null, error: null });
     } catch (error) {
       set({ error: error instanceof Error ? error.message : "Unable to reset demo data" });
       throw error;
@@ -185,10 +163,6 @@ export const useAppStore = create<AppState>((set, get) => ({
       user = await ensureFreshUser(user);
       set({ user, error: null });
       await get().refreshDashboard();
-      if (user.role === "facilitator") {
-        await get().refreshFacilitatorOverview();
-      }
-      await get().refreshLiveSession();
     } catch (error) {
       set({ error: error instanceof Error ? error.message : "Unable to restore session" });
     }
@@ -198,7 +172,6 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({
       user: null,
       dashboard: null,
-      facilitatorOverview: null,
       activeLiveSession: null,
       error: null
     });
